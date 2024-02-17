@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 
 // user Update Controller
 export const userUpdate = async (req, res) => {
-    console.log(req.params.id);
+    // console.log(req.params.id);
     if (req.user.id !== req.params.id) {
         return next(errorHandler(401, "You can only update your own account."));
     }
@@ -51,17 +51,33 @@ export const signOut = (req, res, next) => {
 
 //Delete Controller
 export const deleteUser = async (req, res, next) => {
-    if(req.user.id !== req.params.id){
+    if (req.user.id !== req.params.id) {
         return next(errorHandler(401, "You can only delete your own account."));
     }
 
-    
+
     try {
         await User.findByIdAndDelete(req.user.id);
-    
+
         return res.status(200).clearCookie('access_token').json('User Delete Successful');
-        
+
     } catch (error) {
         return next(errorHandler(500))
     }
 };
+
+//getuser 
+export const getuser = async (req, res, next) => {
+    try {
+        const user = await User.findById({ _id: req.params.id });
+
+        if (!user) {
+            return next(errorHandler(401, "User not found"));
+        }
+        const { password: pass, ...rest } = user._doc;
+
+        return res.status(200).json(rest);
+    } catch (error) {
+        return next(errorHandler(500, `something went wrong while getting user ${error}`));
+    }
+}

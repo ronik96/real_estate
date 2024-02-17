@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getDownloadURL, getStorage, ref, uploadBytesResumable } from "firebase/storage";
 import firebase from '../Firebase';
 import { UserOutStart, userOutFail, userOutSuccess, userUpdateFail, userUpdateStart, userUpdateSuccess } from '../Store/User/Userslice';
+import { Link } from 'react-router-dom'
 
 export default function Profile(props) {
     const setProgress = props.setProgress;
@@ -16,7 +17,10 @@ export default function Profile(props) {
     const [formData, setFormData] = useState({});
     // console.log(formData);
     const [isUpdateSuccess, setIsUpdateSuccess] = useState(false);
-    
+    // Show Listing state
+    const [showListingError, setShowListingError] = useState(false);
+    const [userListings, setUserListing] = useState([]);
+    // console.log(userListings);
     const dispatch = useDispatch()
 
     useEffect(() => {
@@ -99,12 +103,12 @@ export default function Profile(props) {
         try {
             dispatch(UserOutStart());
 
-            const res = await fetch(`/api/user/signout/${currentUser._id}`,{
+            const res = await fetch(`/api/user/signout/${currentUser._id}`, {
                 method: 'DELETE',
             })
             const data = await res.json();
             console.log(data);
-            if(data.success === false) {
+            if (data.success === false) {
                 dispatch(userOutFail(data.message));
                 return;
             }
@@ -117,7 +121,7 @@ export default function Profile(props) {
     }
 
     // Delete Handler
-    const deleteHandler = async (e)=>{
+    const deleteHandler = async (e) => {
         e.preventDefault();
         try {
             dispatch(UserOutStart());
@@ -127,7 +131,7 @@ export default function Profile(props) {
             });
             const data = await res.json();
             console.log(data);
-            if(data.success === false) {
+            if (data.success === false) {
                 dispatch(userOutFail(data.message));
                 return;
             }
@@ -136,7 +140,39 @@ export default function Profile(props) {
             dispatch(userOutFail(error.message));
         }
     }
+    const showListingHandler = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`/api/create/listings/${currentUser._id}`);
+            const data = await res.json();
+            if (data.success === false) {
+                setShowListingError(data.message);
+                return;
+            }
+            setUserListing(data);
+        } catch (error) {
+            console.log(error);
+            setShowListingError(error);
+        }
+    }
 
+    const deleteListingHandler = async (listingId) => {
+        try {
+            const res = await fetch(`/api/create/delete/${listingId}`, {
+                method: "DELETE",
+            });
+            const data = await res.json();
+            console.log(data);
+            if (data.success === false) {
+                console.log(data.message);
+                return;
+            }
+
+            setUserListing((prev) => prev.filter((listing) => listing._id !== listingId))
+        } catch (error) {
+            console.log(error);
+        }
+    }
     return (
         <div className=' p-3 max-w-lg mx-auto shadow-xl rounded-lg'>
             <h1 className=' text-center my-7 text-3xl font-semibold text-slate-700'>Profile</h1>
@@ -166,6 +202,8 @@ export default function Profile(props) {
                 <button disabled={loading} type='submit' className=' border-2 w-full border-sky-600  rounded-lg p-3 bg-sky-600 text-white  text-lg font-medium hover:text-sky-600 hover:bg-white transition-all relative z-10 my-2'>{loading ? "Updating..." : "Update"}</button>
             </form>
 
+            <button className=' border-2 border-sky-600 w-full p-3 rounded-lg bg-sky-600 text-white text-lg font-medium hover:text-sky-600 hover:bg-white transition-all '><Link to={'/createListing'}>Create Listing</Link></button>
+
             <p className=' text-base font-medium text-center text-red-600'>{error ? error : ''}</p>
 
             <p className=' text-base font-medium text-center text-green-500'>{isUpdateSuccess ? "Your profile update successfully." : ''}</p>
@@ -174,6 +212,39 @@ export default function Profile(props) {
                 <button className='bg-red-700 text-white p-3 rounded-lg border-2 border-red-700 hover:text-red-700 hover:bg-white transition-all' onClick={deleteHandler}>Delete Account</button>
                 <button className='bg-red-700 text-white p-3 rounded-lg border-2 border-red-700 hover:text-red-700 hover:bg-white transition-all' onClick={signOutHandler}>Sign Out</button>
             </div>
+            {/* show listing button and listing */}
+            <div className=' text-center mt-5'>
+                <button className=' bg-sky-600 py-1 px-3 text-white font-semibold border-2 border-sky-600 rounded-lg hover:bg-white hover:text-sky-600 transition-all ' onClick={showListingHandler}>Show Listing</button>
+            </div>
+            <p className=' text-red-700 font-medium'>{showListingError ? showListingError : ''}</p>
+            {
+                userListings.length > 0 ? (
+                    <div className=' mt-5 flex flex-col gap-4'>
+                        <h1 className=' my-7 text-3xl text-center font-semibold text-slate-700'>Your listings</h1>
+
+                        {
+                            userListings.map((listing) => (
+                                <div key={listing._id} className=' flex items-center justify-between border-2 p-2 '>
+                                    <Link to={`/listing/${listing._id}`}>
+                                        <img src={listing.imageUrls[0]} alt="listing image" className=' object-contain w-24 h-20 rounded-lg' />
+                                    </Link>
+                                    <Link to={`/listing/${listing._id}`} className=' flex-1 text-lg font-semibold text-slate-700 ms-2 truncate'>
+                                        <p>{listing.Name}</p>
+                                    </Link>
+                                    <div className=' flex flex-col gap-2 text-center'>
+                                        <Link to={`/updateListing/${listing._id}`}>
+                                            <button className=' py-1 px-2 bg-sky-600 text-white border border-sky-600 rounded-lg hover:text-sky-600 hover:bg-white transition-all'>Edit</button>
+                                        </Link>
+                                        <button onClick={() => deleteListingHandler(listing._id)} className=' py-1 px-2 bg-red-700 text-white border border-red-700 rounded-lg hover:text-red-700 hover:bg-white transition-all'>Delete</button>
+                                    </div>
+                                </div>
+                            ))
+                        }
+                    </div>
+                ) : ''
+            }
+
         </div>
+
     )
 }

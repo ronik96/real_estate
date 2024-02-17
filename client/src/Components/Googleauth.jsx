@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 
 export default function Googleauth() {
-    const {loading} = useSelector((state)=> state.user )
+    const { loading } = useSelector((state) => state.user)
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -17,12 +17,12 @@ export default function Googleauth() {
     const submitHandler = async (e) => {
         e.preventDefault();
 
+        const result = await signInWithPopup(auth, provider);
+        console.log(result);
         try {
             dispatch(googleSigninStart())
 
-            const result = await signInWithPopup(auth, provider);
-            // console.log(result);
-            
+
             const res = await fetch("/api/auth/google", {
                 method: "POST",
                 headers: {
@@ -35,7 +35,7 @@ export default function Googleauth() {
                 })
             })
             const data = await res.json();
-            // console.log(data);
+            console.log(data);
             dispatch(userCreateSuccess(data));
             navigate('/');
 
